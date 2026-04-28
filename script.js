@@ -369,6 +369,10 @@
       let currentPdfPage = 1;
       let currentPdfDocument = null;
       let currentPdfNumPages = 0;
+      let currentPdfScale = 1.5;
+      const PDF_SCALE_MIN = 0.5;
+      const PDF_SCALE_MAX = 4.0;
+      const PDF_SCALE_STEP = 0.25;
       const pdfjsLib = window['pdfjs-dist/build/pdf'];
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -393,6 +397,11 @@
                 <button onclick="previousPdfPage()" class="pdf-btn">← Previous</button>
                 <span class="pdf-page-info"><input type="number" id="pdfPageInput" min="1" value="1" onchange="jumpToPdfPage(this.value)" class="pdf-input"> / <span id="pdfTotalPages">0</span></span>
                 <button onclick="nextPdfPage()" class="pdf-btn">Next →</button>
+                <div class="pdf-zoom-group">
+                  <button onclick="zoomOutPdf()" class="pdf-btn pdf-zoom-btn" title="Zoom Out">−</button>
+                  <span class="pdf-zoom-level" id="pdfZoomLevel">100%</span>
+                  <button onclick="zoomInPdf()" class="pdf-btn pdf-zoom-btn" title="Zoom In">+</button>
+                </div>
                 <button onclick="downloadPdf()" class="pdf-btn pdf-download-btn">⬇ Download</button>
               </div>
               <div class="pdf-canvas-container">
@@ -409,6 +418,8 @@
         currentPdfPage = 1;
         currentPdfDocument = null;
         currentPdfNumPages = 0;
+        currentPdfScale = 1.5;
+        updateZoomDisplay();
       }
 
       function loadAndDisplayPdf(pdfPath) {
@@ -428,7 +439,7 @@
           const canvas = document.getElementById('pdfCanvas');
           const ctx = canvas.getContext('2d');
           
-          const viewport = page.getViewport({scale: 1.5});
+          const viewport = page.getViewport({ scale: currentPdfScale });
           canvas.height = viewport.height;
           canvas.width = viewport.width;
           
@@ -442,6 +453,30 @@
             document.getElementById('pdfPageInput').value = pageNum;
           });
         });
+      }
+
+      function zoomInPdf() {
+        if (currentPdfScale < PDF_SCALE_MAX) {
+          currentPdfScale = Math.min(PDF_SCALE_MAX, parseFloat((currentPdfScale + PDF_SCALE_STEP).toFixed(2)));
+          updateZoomDisplay();
+          renderPdfPage(currentPdfPage);
+        }
+      }
+
+      function zoomOutPdf() {
+        if (currentPdfScale > PDF_SCALE_MIN) {
+          currentPdfScale = Math.max(PDF_SCALE_MIN, parseFloat((currentPdfScale - PDF_SCALE_STEP).toFixed(2)));
+          updateZoomDisplay();
+          renderPdfPage(currentPdfPage);
+        }
+      }
+
+      function updateZoomDisplay() {
+        const el = document.getElementById('pdfZoomLevel');
+        if (el) {
+          const pct = Math.round((currentPdfScale / 1.5) * 100);
+          el.textContent = pct + '%';
+        }
       }
 
       function nextPdfPage() {
