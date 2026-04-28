@@ -23,6 +23,9 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- PDF.js Library for PDF Viewing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     <style>
       /* ─── CSS Reset & Variables ─── */
       *,
@@ -1710,9 +1713,9 @@
               systems that scale.
             </p>
             <div class="hero-ctas">
-              <a href="Assets/S_Yogesh_Resume.pdf" download class="btn-primary">
-                <span>⬇</span> Download Résumé
-              </a>
+              <button onclick="openPdfViewer('Assets/S_Yogesh_Resume.pdf')" class="btn-primary" style="border: none; background: inherit;">
+                <span>👁</span> View Résumé
+              </button>
               <a href="#projects" class="btn-outline">
                 <span>⚡</span> View Projects
               </a>
@@ -3043,12 +3046,12 @@
                   </div>
                 </div>
               </a>
-              <a
-                href="Assets/S_Yogesh_Resume.pdf"
-                download
+              <button
+                onclick="openPdfViewer('Assets/S_Yogesh_Resume.pdf')"
                 class="contact-link"
+                style="border: none; background: none; cursor: pointer;"
               >
-                <div class="contact-link-icon">⬇</div>
+                <div class="contact-link-icon">👁</div>
                 <div>
                   <div
                     style="
@@ -3057,7 +3060,7 @@
                       font-size: 0.88rem;
                     "
                   >
-                    Download Résumé
+                    View Résumé
                   </div>
                   <div
                     style="
@@ -3069,7 +3072,7 @@
                     PDF · Updated 2024
                   </div>
                 </div>
-              </a>
+              </button>
             </div>
           </div>
 
@@ -3538,6 +3541,305 @@
       }
       window.addEventListener("scroll", updateNav, { passive: true });
       updateNav();
+
+      /* ─── PDF Viewer Modal ─── */
+      let currentPdfPage = 1;
+      let currentPdfDocument = null;
+      let currentPdfNumPages = 0;
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      function openPdfViewer(pdfPath) {
+        const modal = document.getElementById('pdfViewerModal');
+        if (!modal) createPdfModal();
+        document.getElementById('pdfViewerModal').style.display = 'flex';
+        loadAndDisplayPdf(pdfPath);
+      }
+
+      function createPdfModal() {
+        const modal = document.createElement('div');
+        modal.id = 'pdfViewerModal';
+        modal.innerHTML = `
+          <div class="pdf-modal-content">
+            <div class="pdf-modal-header">
+              <h3>Resume Viewer</h3>
+              <button class="pdf-close-btn" onclick="closePdfViewer()">✕</button>
+            </div>
+            <div class="pdf-modal-body">
+              <div class="pdf-controls">
+                <button onclick="previousPdfPage()" class="pdf-btn">← Previous</button>
+                <span class="pdf-page-info"><input type="number" id="pdfPageInput" min="1" value="1" onchange="jumpToPdfPage(this.value)" class="pdf-input"> / <span id="pdfTotalPages">0</span></span>
+                <button onclick="nextPdfPage()" class="pdf-btn">Next →</button>
+                <button onclick="downloadPdf()" class="pdf-btn pdf-download-btn">⬇ Download</button>
+              </div>
+              <div class="pdf-canvas-container">
+                <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      function closePdfViewer() {
+        document.getElementById('pdfViewerModal').style.display = 'none';
+        currentPdfPage = 1;
+        currentPdfDocument = null;
+        currentPdfNumPages = 0;
+      }
+
+      function loadAndDisplayPdf(pdfPath) {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.getDocument(pdfPath).promise.then(pdf => {
+          currentPdfDocument = pdf;
+          currentPdfNumPages = pdf.numPages;
+          document.getElementById('pdfTotalPages').textContent = pdf.numPages;
+          renderPdfPage(1);
+        });
+      }
+
+      function renderPdfPage(pageNum) {
+        if (!currentPdfDocument) return;
+        
+        currentPdfDocument.getPage(pageNum).then(page => {
+          const canvas = document.getElementById('pdfCanvas');
+          const ctx = canvas.getContext('2d');
+          
+          const viewport = page.getViewport({scale: 1.5});
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+          };
+          
+          page.render(renderContext).promise.then(() => {
+            currentPdfPage = pageNum;
+            document.getElementById('pdfPageInput').value = pageNum;
+          });
+        });
+      }
+
+      function nextPdfPage() {
+        if (currentPdfPage < currentPdfNumPages) {
+          renderPdfPage(currentPdfPage + 1);
+        }
+      }
+
+      function previousPdfPage() {
+        if (currentPdfPage > 1) {
+          renderPdfPage(currentPdfPage - 1);
+        }
+      }
+
+      function jumpToPdfPage(pageNum) {
+        pageNum = parseInt(pageNum);
+        if (pageNum >= 1 && pageNum <= currentPdfNumPages) {
+          renderPdfPage(pageNum);
+        }
+      }
+
+      function downloadPdf() {
+        const link = document.createElement('a');
+        link.href = 'Assets/S_Yogesh_Resume.pdf';
+        link.download = 'Sankranthi_Yogesh_Resume.pdf';
+        link.click();
+      }
+
+      // Close modal on background click
+      document.addEventListener('click', function(event) {
+        const modal = document.getElementById('pdfViewerModal');
+        if (modal && event.target === modal) {
+          closePdfViewer();
+        }
+      });
+
+      // Close modal on Escape key
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          closePdfViewer();
+        }
+      });
     </script>
+    
+    <style>
+      /* ─── PDF Viewer Modal Styles ─── */
+      #pdfViewerModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 99998;
+        background: rgba(8, 8, 16, 0.95);
+        backdrop-filter: blur(20px);
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .pdf-modal-content {
+        width: 90vw;
+        max-width: 900px;
+        height: 90vh;
+        max-height: 800px;
+        background: var(--surface2);
+        border-radius: 16px;
+        border: 1px solid var(--border2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+
+      .pdf-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .pdf-modal-header h3 {
+        font-family: var(--font-display);
+        font-size: 1.3rem;
+        color: var(--white);
+        margin: 0;
+      }
+
+      .pdf-close-btn {
+        background: none;
+        border: none;
+        color: var(--text2);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color var(--transition);
+        padding: 0.5rem;
+      }
+
+      .pdf-close-btn:hover {
+        color: var(--gold);
+      }
+
+      .pdf-modal-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .pdf-controls {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 2rem;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .pdf-btn {
+        background: var(--gold);
+        color: #000;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: var(--radius2);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition);
+        font-size: 0.85rem;
+      }
+
+      .pdf-btn:hover {
+        background: var(--gold2);
+        transform: translateY(-2px);
+      }
+
+      .pdf-download-btn {
+        background: var(--teal);
+        margin-left: auto;
+      }
+
+      .pdf-download-btn:hover {
+        background: var(--teal2);
+      }
+
+      .pdf-page-info {
+        color: var(--text2);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .pdf-input {
+        width: 50px;
+        padding: 0.4rem 0.6rem;
+        background: var(--bg2);
+        color: var(--white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        font-family: var(--font-mono);
+        text-align: center;
+      }
+
+      .pdf-input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .pdf-canvas-container {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: var(--bg2);
+      }
+
+      .pdf-canvas {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .pdf-modal-content {
+          width: 95vw;
+          height: 95vh;
+        }
+
+        .pdf-modal-header,
+        .pdf-controls {
+          padding: 1rem;
+        }
+
+        .pdf-btn {
+          padding: 0.5rem 0.8rem;
+          font-size: 0.75rem;
+        }
+
+        .pdf-download-btn {
+          margin-left: 0;
+          margin-top: 0.5rem;
+        }
+
+        .pdf-page-info {
+          font-size: 0.8rem;
+        }
+      }
+    </style>
   </body>
 </html>
